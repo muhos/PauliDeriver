@@ -38,7 +38,7 @@ def derive_single_qubit_pauli_constraints(U, tol, print_pauli, print_table, try_
     print("--------[ Gate %s (single qubit) ]--------------------" % name)
 
     if print_pauli:
-        print(" Pauli strings:")
+        print("\n Pauli strings:\n")
 
     for x, z in product([0,1], repeat=2):
         Pin  = P(x,z)
@@ -81,7 +81,7 @@ def derive_single_qubit_pauli_constraints(U, tol, print_pauli, print_table, try_
 
     if print_table:
         print("")
-        print("Pauli bits:")
+        print(" Pauli bits:\n")
         print("  %s  %s    %-6s  %-6s    %-10s   %-s" %('x', 'z', "x'", "z'", 'Negative', "Negative branch"))
         print(" " + "-"*70)
         for e in info:
@@ -103,6 +103,7 @@ def derive_single_qubit_pauli_constraints(U, tol, print_pauli, print_table, try_
             print("  %d  %d    %-6s  %-6s    %-10s   %-s" % (x, z, str(ox), str(oz), neg, nb))
 
     if try_simplify:
+        print("\n Update rules:\n")
         try:
             import sympy as sp
             var_in = sp.symbols("x z", boolean=True)
@@ -111,21 +112,21 @@ def derive_single_qubit_pauli_constraints(U, tol, print_pauli, print_table, try_
             if x_branches:
                 mins_x1 = [(e["in_x"], e["in_z"]) for e in info if len(e["out_xs"]) > 1]
                 expr_xp = sp.simplify_logic(sp.SOPform(list(var_in), mins_x1), form='dnf')
-                print("\n x' := (%s) | x' <-> x" % expr_xp)
+                print("  x' := (%s) | x' <-> x" % expr_xp)
             else:
                 mins_x1 = [(e["in_x"], e["in_z"]) for e in info if (len(e["out_xs"])==1 and 1 in e["out_xs"])]
                 expr_xp = sp.simplify_logic(sp.SOPform(list(var_in), mins_x1), form='dnf')
-                print("\n x' := %s" % expr_xp)
+                print("  x' := %s" % expr_xp)
 
             # z'
             if z_branches:
                 mins_z1 = [(e["in_x"], e["in_z"]) for e in info if len(e["out_zs"]) > 1]
                 expr_zp = sp.simplify_logic(sp.SOPform(list(var_in), mins_z1), form='dnf')
-                print(" z' := (%s) | z' <-> z" % expr_zp)
+                print("  z' := (%s) | z' <-> z" % expr_zp)
             else:
                 mins_z1 = [(e["in_x"], e["in_z"]) for e in info if (len(e["out_zs"])==1 and 1 in e["out_zs"])]
                 expr_zp = sp.simplify_logic(sp.SOPform(list(var_in), mins_z1), form='dnf')
-                print(" z' := %s" % expr_zp)
+                print("  z' := %s" % expr_zp)
 
             # Sign update
             var_names = ["x","z"]
@@ -141,9 +142,9 @@ def derive_single_qubit_pauli_constraints(U, tol, print_pauli, print_table, try_
                 vars_order = sp.symbols(" ".join(var_names), boolean=True)
                 expr = sp.SOPform(list(vars_order), reduced)
                 expr_simplified = sp.simplify_logic(expr, form='dnf')
-                print("\n s := %s\n" % (expr_simplified))
+                print("\n  s := %s\n" % (expr_simplified))
             else:
-                print("\n s :=  r' = r\n")
+                print("\n  s :=  r' = r\n")
         except Exception as e:
             print(" (sympy simplification skipped:", e, ")")
 
@@ -157,7 +158,7 @@ def derive_dual_qubits_pauli_constraints(U, tol, print_pauli, print_table, try_s
     neg_branch_minterms = []
 
     if print_pauli:
-        print(" Pauli strings:")
+        print("\n Pauli strings:")
 
     for xc, zc, xt, zt in product([0,1], repeat=4):
         P_in = pauli_tensor(xc, zc, xt, zt)
@@ -232,6 +233,7 @@ def derive_dual_qubits_pauli_constraints(U, tol, print_pauli, print_table, try_s
                 neg, label))
 
     if try_simplify:
+        print("\n Update rules:\n")
         try:
             import sympy as sp
             var_in = sp.symbols("xc zc xt zt", boolean=True)
@@ -240,41 +242,41 @@ def derive_dual_qubits_pauli_constraints(U, tol, print_pauli, print_table, try_s
             if xc_branches:
                 mins = [(e['in_xc'], e['in_zc'], e['in_xt'], e['in_zt']) for e in info if len(e['out_xc']) > 1]
                 expr = sp.simplify_logic(sp.SOPform(list(var_in), mins), form='dnf')
-                print("\n xc' := (%s) | xc' <-> xc" % expr)
+                print("  xc' := (%s) | xc' <-> xc" % expr)
             else:
                 mins = [(e['in_xc'], e['in_zc'], e['in_xt'], e['in_zt']) for e in info if (len(e['out_xc'])==1 and 1 in e['out_xc'])]
                 expr = sp.simplify_logic(sp.SOPform(list(var_in), mins), form='dnf')
-                print("\n xc' := %s" % expr)
+                print("  xc' := %s" % expr)
 
             # zc'
             if zc_branches:
                 mins = [(e['in_xc'], e['in_zc'], e['in_xt'], e['in_zt']) for e in info if len(e['out_zc']) > 1]
                 expr = sp.simplify_logic(sp.SOPform(list(var_in), mins), form='dnf')
-                print(" zc' := (%s) | zc' <-> zc" % expr)  # keep your label style if you prefer zc'
+                print("  zc' := (%s) | zc' <-> zc" % expr)  # keep your label style if you prefer zc'
             else:
                 mins = [(e['in_xc'], e['in_zc'], e['in_xt'], e['in_zt']) for e in info if (len(e['out_zc'])==1 and 1 in e['out_zc'])]
                 expr = sp.simplify_logic(sp.SOPform(list(var_in), mins), form='dnf')
-                print(" zc' := %s" % expr)
+                print("  zc' := %s" % expr)
 
             # xt'
             if xt_branches:
                 mins = [(e['in_xc'], e['in_zc'], e['in_xt'], e['in_zt']) for e in info if len(e['out_xt']) > 1]
                 expr = sp.simplify_logic(sp.SOPform(list(var_in), mins), form='dnf')
-                print(" xt' := (%s) | xt' <-> xt" % expr)
+                print("  xt' := (%s) | xt' <-> xt" % expr)
             else:
                 mins = [(e['in_xc'], e['in_zc'], e['in_xt'], e['in_zt']) for e in info if (len(e['out_xt'])==1 and 1 in e['out_xt'])]
                 expr = sp.simplify_logic(sp.SOPform(list(var_in), mins), form='dnf')
-                print(" xt' := %s" % expr)
+                print("  xt' := %s" % expr)
 
             # zt'
             if zt_branches:
                 mins = [(e['in_xc'], e['in_zc'], e['in_xt'], e['in_zt']) for e in info if len(e['out_zt']) > 1]
                 expr = sp.simplify_logic(sp.SOPform(list(var_in), mins), form='dnf')
-                print(" zt' := (%s) | zt' <-> zt" % expr)
+                print("  zt' := (%s) | zt' <-> zt" % expr)
             else:
                 mins = [(e['in_xc'], e['in_zc'], e['in_xt'], e['in_zt']) for e in info if (len(e['out_zt'])==1 and 1 in e['out_zt'])]
                 expr = sp.simplify_logic(sp.SOPform(list(var_in), mins), form='dnf')
-                print(" zt' := %s" % expr)
+                print("  zt' := %s" % expr)
 
             # sign
             var_names = ["xc","zc","xt","zt"]
@@ -294,9 +296,9 @@ def derive_dual_qubits_pauli_constraints(U, tol, print_pauli, print_table, try_s
                 vars_order = sp.symbols(" ".join(var_names), boolean=True)
                 expr = sp.SOPform(list(vars_order), reduced)
                 expr_simplified = sp.simplify_logic(expr, form='dnf', deep=True, force=True)
-                print("\n s := %s\n" % (expr_simplified))
+                print("\n  s := %s\n" % (expr_simplified))
             else:
-                print("\n s :=  r' = r\n")
+                print("\n  s :=  r' = r\n")
         except Exception as e:
             print(' (sympy simplification skipped: %s)' % e)
 
