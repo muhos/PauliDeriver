@@ -51,7 +51,7 @@ apply_gate(Rz, tolerance=1e-8, print_pauli=True, print_table=True)
    Rx(pi/7) (X) Rx(pi/7)† = 1*X
    Rx(pi/7) (Y) Rx(pi/7)† = 0.434*Z + 0.901*Y
 
-Pauli bits:
+ Pauli bits:
   x  z    x'      z'        Negative     Negative branch
  ----------------------------------------------------------------------
   0  0    {0}     {0}       no           none
@@ -59,10 +59,11 @@ Pauli bits:
   1  0    {1}     {0}       no           none
   1  1    {0, 1}  {1}       no           none
 
- x' := (z) | x' <-> x
- z' := z
+ Update rules:
+  x' := (z) | x' <-> x
+  z' := z
 
- s := x' & z & ~x
+  s := x' & z & ~x
 
 --------[ Gate Rz(pi/7) (single qubit) ]--------------------
  Pauli strings:
@@ -71,7 +72,7 @@ Pauli bits:
    Rz(pi/7) (X) Rz(pi/7)† = 0.901*X + 0.434*Y
    Rz(pi/7) (Y) Rz(pi/7)† = -0.434*X + 0.901*Y
 
-Pauli bits:
+ Pauli bits:
   x  z    x'      z'        Negative     Negative branch
  ----------------------------------------------------------------------
   0  0    {0}     {0}       no           none
@@ -79,10 +80,11 @@ Pauli bits:
   1  0    {1}     {0, 1}    no           none
   1  1    {1}     {0, 1}    yes          z'=0
 
- x' := x
- z' := (x) | z' <-> z
+ Update rules:
+  x' := x
+  z' := (x) | z' <-> z
 
- s := x & z & ~z'
+  s := x & z & ~z'
 ```
 
 
