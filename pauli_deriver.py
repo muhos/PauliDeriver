@@ -50,7 +50,7 @@ def derive_single_qubit_pauli_constraints(U, tol, print_pauli, print_table, try_
 
         for xp, zp in product([0,1], repeat=2):
             Q = P(xp,zp)
-            coeff = np.trace(Q.conj().T @ Pout) / 2  # d=2
+            coeff = np.trace(Q @ Pout) / 2  # d=2
             if abs(coeff) > tol:
                 terms.append((coeff, (xp,zp)))
                 out_xs.add(xp)
@@ -170,7 +170,7 @@ def derive_dual_qubits_pauli_constraints(U, tol, print_pauli, print_table, try_s
 
         for xcp, zcp, xtp, ztp in product([0,1], repeat=4):
             Q = pauli_tensor(xcp, zcp, xtp, ztp)
-            coeff = np.trace(Q.conj().T @ P_out) / 4
+            coeff = np.trace(Q @ P_out) / 4
             if abs(coeff) > tol:
                 out_xc.add(xcp); out_zc.add(zcp); out_xt.add(xtp); out_zt.add(ztp)
                 if print_pauli:
@@ -359,18 +359,3 @@ if __name__ == '__main__':
         print_clifford(tolerance=args.tolerance, print_pauli=args.print_pauli, print_table=args.print_table)
     if args.print_non_clifford:
         print_non_clifford(tolerance=args.tolerance, print_pauli=args.print_pauli, print_table=args.print_table)
-
-    theta = np.pi/7
-
-    Rx = ('Rx(pi/7)', np.array([
-        [np.cos(theta/2), -1j*np.sin(theta/2)],
-        [-1j*np.sin(theta/2), np.cos(theta/2)]
-    ], dtype=complex))
-
-    Rz = ('Rz(pi/7)', np.array([
-        [np.exp(-1j*theta/2), 0],
-        [0, np.exp(1j*theta/2)]
-    ], dtype=complex))
-
-    apply_gate(Rx, tolerance=1e-8, print_pauli=True, print_table=True)
-    apply_gate(Rz, tolerance=1e-8, print_pauli=True, print_table=True)
