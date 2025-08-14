@@ -1,5 +1,27 @@
 import numpy as np
 from itertools import product
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--tolerance', '-t', type=float, default=1e-6)
+parser.add_argument('--check-hermitian', dest='check_h', action='store_true')
+parser.add_argument('--print-pauli', dest='print_pauli', action='store_true')
+parser.add_argument('--no-print-pauli', dest='print_pauli', action='store_false')
+parser.set_defaults(print_pauli=True)
+parser.add_argument('--print-table', dest='print_table', action='store_true')
+parser.add_argument('--no-print-table', dest='print_table', action='store_false')
+parser.set_defaults(print_table=True)
+parser.add_argument('--print-clifford', action='store_true')
+parser.add_argument('--print-non-clifford', action='store_true')
+parser.set_defaults(print_clifford=True)
+parser.set_defaults(print_non_clifford=True)
+args = parser.parse_args()
+
+tolerance = args.tolerance
+print_pauli = args.print_pauli
+print_table = args.print_table
+print_clifford = args.print_clifford
+print_non_clifford = args.print_non_clifford
 
 labels = {(0, 0): 'I', (1, 0): 'X', (0, 1): 'Z', (1, 1): 'Y'}
 
@@ -14,21 +36,21 @@ def P(x, z):
 def pauli_tensor(xc, zc, xt, zt):
     return np.kron(P(xc, zc), P(xt, zt))
 
-def coeffstring(coeff, tol):
+def coeffstring(coeff, tolerance):
     sign = ""; coeff_str = ""
-    is_real = abs(coeff.imag) < tol
+    is_real = abs(coeff.imag) < tolerance
     c = coeff.real if is_real else coeff
     if not is_real:
         coeff_str, sign = ("%.3g" % c), ''
     else:
         magnitude, sign = abs(c), ('-' if c < 0 else '')
-        if np.isclose(magnitude, 1 / np.sqrt(2), atol=tol): coeff_str = "1/√2"
-        elif np.isclose(magnitude, 1.0, atol=tol):          coeff_str = "1"
-        elif np.isclose(magnitude, 0.5, atol=tol):          coeff_str = "1/2"
+        if np.isclose(magnitude, 1 / np.sqrt(2), atol=tolerance): coeff_str = "1/√2"
+        elif np.isclose(magnitude, 1.0, atol=tolerance):          coeff_str = "1"
+        elif np.isclose(magnitude, 0.5, atol=tolerance):          coeff_str = "1/2"
         else: coeff_str = ("%.3f" % magnitude).rstrip('0').rstrip('.')
     return sign, coeff_str
 
-def derive_single_qubit_pauli_constraints(U, tol, print_pauli, print_table, try_simplify):
+def derive_single_qubit_pauli_constraints(U, try_simplify):
     name, U = U
 
     info = []
@@ -36,6 +58,15 @@ def derive_single_qubit_pauli_constraints(U, tol, print_pauli, print_table, try_
     neg_branch_minterms = []     # only branches (x, z, x', z') with negative coefficients
 
     print("--------[ Gate %s (single qubit) ]--------------------" % name)
+
+    U_T = U.conj().T
+
+    if args.check_h:
+        print("\n Unitary is ", end='')
+        if np.allclose(U, U_T, atol=tolerance):
+            print("Hermitian")
+        else:
+            print("Non-Hermitian")
 
     if print_pauli:
         print("\n Pauli strings:\n")
@@ -51,11 +82,11 @@ def derive_single_qubit_pauli_constraints(U, tol, print_pauli, print_table, try_
         for xp, zp in product([0,1], repeat=2):
             Q = P(xp,zp)
             coeff = np.trace(Q @ Pout) / 2  # d=2
-            if abs(coeff) > tol:
+            if abs(coeff) > tolerance:
                 terms.append((coeff, (xp,zp)))
                 out_xs.add(xp)
                 out_zs.add(zp)
-                if coeff.real < -tol and abs(coeff.imag) < tol:
+                if coeff.real < -tolerance and abs(coeff.imag) < tolerance:
                     has_negative_input = True
                     neg_branch_minterms.append((x, z, xp, zp))
 
@@ -71,7 +102,7 @@ def derive_single_qubit_pauli_constraints(U, tol, print_pauli, print_table, try_
             input = "  %s (%s) %s† = " % (name, labels[(x,z)], name)
             parts = []
             for coeff, (xp,zp) in terms:
-                sign, coeff_str = coeffstring(coeff, tol)
+                sign, coeff_str = coeffstring(coeff, tolerance)
                 parts.append("%s%s*%s" % (sign, coeff_str, labels[(xp,zp)]))
             pauli_string = " + ".join(parts).replace("+ -", "- ")
             print(" " + input + pauli_string)
@@ -148,7 +179,7 @@ def derive_single_qubit_pauli_constraints(U, tol, print_pauli, print_table, try_
         except Exception as e:
             print(" (sympy simplification skipped:", e, ")")
 
-def derive_dual_qubits_pauli_constraints(U, tol, print_pauli, print_table, try_simplify):
+def derive_dual_qubits_pauli_constraints(U, try_simplify):
     gate, U = U
 
     print("--------[ Gate %s ]--------------------" % gate)
@@ -157,12 +188,21 @@ def derive_dual_qubits_pauli_constraints(U, tol, print_pauli, print_table, try_s
     neg_input_minterms = []
     neg_branch_minterms = []
 
+    U_T = U.conj().T
+
+    if args.check_h:
+        print("\n Unitary is ", end='')
+        if np.allclose(U, U_T, atol=tolerance):
+            print("Hermitian")
+        else:
+            print("Non-Hermitian")
+
     if print_pauli:
-        print("\n Pauli strings:")
+        print("\n Pauli strings:\n")
 
     for xc, zc, xt, zt in product([0,1], repeat=4):
         P_in = pauli_tensor(xc, zc, xt, zt)
-        P_out = U @ P_in @ U.conj().T
+        P_out = U @ P_in @ U_T
 
         out_xc, out_zc, out_xt, out_zt = set(), set(), set(), set()
         pauli_terms = []
@@ -171,11 +211,11 @@ def derive_dual_qubits_pauli_constraints(U, tol, print_pauli, print_table, try_s
         for xcp, zcp, xtp, ztp in product([0,1], repeat=4):
             Q = pauli_tensor(xcp, zcp, xtp, ztp)
             coeff = np.trace(Q @ P_out) / 4
-            if abs(coeff) > tol:
+            if abs(coeff) > tolerance:
                 out_xc.add(xcp); out_zc.add(zcp); out_xt.add(xtp); out_zt.add(ztp)
                 if print_pauli:
                     pauli_terms.append((coeff, (xcp, zcp, xtp, ztp)))
-                if coeff.real < -tol and abs(coeff.imag) < tol:
+                if coeff.real < -tolerance and abs(coeff.imag) < tolerance:
                     has_negative_input = True
                     neg_branch_minterms.append((xc, zc, xt, zt, xcp, zcp, xtp, ztp))
 
@@ -192,7 +232,7 @@ def derive_dual_qubits_pauli_constraints(U, tol, print_pauli, print_table, try_s
             parts = []
             for coeff, (xcp, zcp, xtp, ztp) in pauli_terms:
                 label = "%sc ⊗ %st" % (labels[(xcp, zcp)], labels[(xtp, ztp)])
-                sign, coeff_str = coeffstring(coeff, tol)
+                sign, coeff_str = coeffstring(coeff, tolerance)
                 parts.append('%s%s*%s' % (sign, coeff_str, label))
             expr = ' + '.join(parts).replace('+ -', '- ')
             print('  %s (%s) %s† = %s' % (gate, inp_label, gate, expr))
@@ -204,7 +244,7 @@ def derive_dual_qubits_pauli_constraints(U, tol, print_pauli, print_table, try_s
     
     if print_table:
         print("")
-        print(" Pauli bits:")
+        print(" Pauli bits:\n")
         print(" %3s %3s %3s %3s   %7s %7s %7s %7s    %-10s   %-s" 
             % ('xc', 'zc', 'xt', 'zt', "xc'", "zc'", "xt'", "zt'", 'Negative', "Negative branch"))
         print(" " + "-"*90)
@@ -302,12 +342,12 @@ def derive_dual_qubits_pauli_constraints(U, tol, print_pauli, print_table, try_s
         except Exception as e:
             print(' (sympy simplification skipped: %s)' % e)
 
-def apply_gate(Gate, tolerance=1e-6, print_pauli=True, print_table=True):
+def apply_gate(Gate):
     name, U = Gate
     if U.shape == (2,2):
-        derive_single_qubit_pauli_constraints(Gate, tol=tolerance, print_pauli=print_pauli, print_table=print_table, try_simplify=True)
+        derive_single_qubit_pauli_constraints(Gate, try_simplify=True)
     elif U.shape == (4,4):
-        derive_dual_qubits_pauli_constraints(Gate, tol=tolerance, print_pauli=print_pauli, print_table=print_table, try_simplify=True)
+        derive_dual_qubits_pauli_constraints(Gate, try_simplify=True)
     else:
         raise ValueError("Gate unitary must be 2x2 or 4x4")
 
@@ -321,9 +361,9 @@ def print_clifford(tolerance=1e-6, print_pauli=True, print_table=True):
                     [0, 1, 0, 0], 
                     [0, 0, 0, 1],
                     [0, 0, 1, 0]], dtype=complex))
-    apply_gate(H, tolerance=tolerance, print_pauli=print_pauli, print_table=print_table)
-    apply_gate(S, tolerance=tolerance, print_pauli=print_pauli, print_table=print_table)
-    apply_gate(CX, tolerance=tolerance, print_pauli=print_pauli, print_table=print_table)
+    apply_gate(H)
+    apply_gate(S)
+    apply_gate(CX)
 
 def print_non_clifford(tolerance=1e-6, print_pauli=True, print_table=True):
     T = ('T', np.array([
@@ -335,27 +375,18 @@ def print_non_clifford(tolerance=1e-6, print_pauli=True, print_table=True):
                     [0, 1, 0, 0], 
                     [0, 0, (1 + 1j) / 2, (1 - 1j) / 2],
                     [0, 0, (1 - 1j) / 2, (1 + 1j) / 2]], dtype=complex))
-    apply_gate(T, tolerance=tolerance, print_pauli=print_pauli, print_table=print_table)
-    apply_gate(CS, tolerance=tolerance, print_pauli=print_pauli, print_table=print_table)
-    apply_gate(CSqrtX, tolerance=tolerance, print_pauli=print_pauli, print_table=print_table)
+    CSqrtXdg = ('C√Xdg', np.array([
+                    [1, 0, 0, 0], 
+                    [0, 1, 0, 0], 
+                    [0, 0, (1 - 1j) / 2, (1 + 1j) / 2],
+                    [0, 0, (1 + 1j) / 2, (1 - 1j) / 2]], dtype=complex))
+    apply_gate(T)
+    apply_gate(CS)
+    apply_gate(CSqrtX)
+    apply_gate(CSqrtXdg)
 
 if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--tolerance', '-t', type=float, default=1e-6)
-    parser.add_argument('--print-pauli', dest='print_pauli', action='store_true')
-    parser.add_argument('--no-print-pauli', dest='print_pauli', action='store_false')
-    parser.set_defaults(print_pauli=True)
-    parser.add_argument('--print-table', dest='print_table', action='store_true')
-    parser.add_argument('--no-print-table', dest='print_table', action='store_false')
-    parser.set_defaults(print_table=True)
-    parser.add_argument('--print-clifford', action='store_true')
-    parser.add_argument('--print-non-clifford', action='store_true')
-    parser.set_defaults(print_clifford=True)
-    parser.set_defaults(print_non_clifford=True)
-    args = parser.parse_args()
-
     if args.print_clifford:
-        print_clifford(tolerance=args.tolerance, print_pauli=args.print_pauli, print_table=args.print_table)
+        print_clifford()
     if args.print_non_clifford:
-        print_non_clifford(tolerance=args.tolerance, print_pauli=args.print_pauli, print_table=args.print_table)
+        print_non_clifford()
